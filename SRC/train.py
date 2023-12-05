@@ -1,5 +1,7 @@
 import torch
 from torch import autograd
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 def compute_gradient_penalty(discriminator, real_samples, fake_samples, Stru, Time, Dose, device):
     """Calculates the gradient penalty loss for WGAN GP"""
@@ -57,17 +59,17 @@ def calc_generator_regularization(Stru, Time, Dose, z, device, generator):
     return gp
 
 def train(generator, discriminator, dataloader, n_epochs, n_critic, Z_dim, device, lr, b1, b2, interval, model_path,
-          lambda_gp, lambda_GR):
+          lambda_gp, lambda_GR, writer):
     '''
     :param lambda_gp: Loss weight for gradient penalty
     '''
-
+    
     # Define optimizers for generator and discriminator
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
 
     # Training loop
-    for epoch in range(n_epochs):
+    for epoch in tqdm(range(n_epochs)):
         for i, (Measurement, Stru, Time, Dose) in enumerate(dataloader):
             batch_size = Measurement.shape[0]
 
@@ -104,10 +106,10 @@ def train(generator, discriminator, dataloader, n_epochs, n_critic, Z_dim, devic
                 optimizer_G.zero_grad()
                 g_loss.backward()
                 optimizer_G.step()
-            print(
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch + 1, opt.n_epochs, i + 1, len(dataloader), d_loss.item(), g_loss.item())
-            )
+
+        writer.add_scalar("D_loss", d_loss.item(), epoch+1)
+        writer.add_scalar("G_loss", g_loss.item(), epoch+1)
+        
         if (epoch + 1) % interval == 0:
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
@@ -121,9 +123,8 @@ if __name__ == '__main__':
     from model import Generator, Discriminator
     import torch
 
-    wd = r'/path/to/your/project'
-    os.chdir(wd)
     opt = parse_opt()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     data_path = opt.data_path
     descriptors_path = opt.descriptors_path
@@ -133,6 +134,8 @@ if __name__ == '__main__':
     generator = Generator(opt.Z_dim, opt.Stru_dim, opt.Time_dim, opt.Dose_dim, opt.Measurement_dim).to(device)
     discriminator = Discriminator(opt.Stru_dim, opt.Time_dim, opt.Dose_dim, opt.Measurement_dim).to(device)
 
+    writer = SummaryWriter(log_dir=opt.log)
+
     # Training WGAN-GP with generator regularization
     train(generator, discriminator, dataloader, opt.n_epochs, opt.n_critic, opt.Z_dim, device, opt.lr, opt.b1, opt.b2,
-          opt.interval, opt.model_path, opt.lambda_gp, lambda_GR=0.02)
+          opt.interval, opt.model_path, opt.lambda_gp, lambda_GR=0.02, writer=writer)
