@@ -24,6 +24,10 @@ def parse_opt():
     parser.add_argument("--filename_Losses", type=str, default='Loss.txt', help="filename of losses")
 
     parser.add_argument("--num_generate", type=int, default=100, help="number of blood testing records you want to generate")
+
+    parser.add_argument('--data_path', type=str, default='./Data/Example_Data_training.tsv', help="path to data fle")
+    parser.add_argument('--descriptors_path', type=str, default='./Data/Example_MolecularDescriptors.tsv', help="path to Descriptor file")
+    parser.add_argument("-l", '--log', type=str, default='./logs', help="path to log folder for Tensorboard")
     opt = parser.parse_args()
 
     return opt
