@@ -3,6 +3,8 @@
 logs/*
 !/logs/Loss.txt
 
+models/*
+
 __pycache__/
 *.py[cod]
 *$py.class
